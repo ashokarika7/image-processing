@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-processing-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-processing-worker
+  template:
+    metadata:
+      labels:
+        app: image-processing-worker
+    spec:
+      containers:
+        - name: worker
+          image: docker.io/ashok40/image-processing-api:1.0
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "services.sqs_worker"]
+          envFrom:
+            - secretRef:
+                name: image-processing-secrets
+
+docker push ashok40/image-processing-api:1.0

@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-processing-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-processing-api
+  template:
+    metadata:
+      labels:
+        app: image-processing-api
+    spec:
+      containers:
+        - name: api
+          image: docker.io/ashok40/image-processing-api:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: image-processing-secrets
