@@ -6,7 +6,7 @@ The application provides presigned URLs for image uploads, stores image metadata
 
 ## Live Demo
 
-* **API Documentation (Swagger):** http://56.228.35.139:30080/docs
+* **API Documentation (Swagger):** http://13.62.240.127:30080/docs
 * **GitHub Repository:** https://github.com/ashokarika7/image-processing
 
 > The live URL uses the EC2 public IP and may change if the instance is stopped and started.
@@ -181,7 +181,7 @@ The EC2 instance accesses AWS services using its configured AWS permissions.
 
 Swagger UI is available at:
 
-http://56.228.35.139:30080/docs
+http://13.62.240.127:30080/docs
 
 Use the interactive documentation to explore and test the available API endpoints.
 
