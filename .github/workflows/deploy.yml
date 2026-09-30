@@ -46,7 +46,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
- 
+
       - name: Deploy through SSM
         env:
           IMAGE_TAG: ${{ github.sha }}
@@ -56,25 +56,58 @@ jobs:
           IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
 
           COMMANDS=$(cat <<EOF
+          
           set -e
+
           sudo kubectl set image deployment/image-processing-api api=${IMAGE}
           sudo kubectl set image deployment/image-processing-worker worker=${IMAGE}
-          sudo kubectl rollout status deployment/image-processing-api --timeout=180s
-          sudo kubectl rollout status deployment/image-processing-worker --timeout=180s
 
-          # Check API health
-          for i in \$(seq 1 12); do
+          # Wait for API rollout
+          if ! sudo kubectl rollout status deployment/image-processing-api --timeout=180s; then
+            echo "API rollout failed. Rolling back..."
+            sudo kubectl rollout undo deployment/image-processing-api
+            sudo kubectl rollout undo deployment/image-processing-worker
+
+            sudo kubectl rollout status deployment/image-processing-api --timeout=180s
+            sudo kubectl rollout status deployment/image-processing-worker --timeout=180s
+            exit 1
+          fi
+
+          # Wait for worker rollout
+          if ! sudo kubectl rollout status deployment/image-processing-worker --timeout=180s; then
+            echo "Worker rollout failed. Rolling back..."
+            sudo kubectl rollout undo deployment/image-processing-api
+            sudo kubectl rollout undo deployment/image-processing-worker
+
+            sudo kubectl rollout status deployment/image-processing-api --timeout=180s
+            sudo kubectl rollout status deployment/image-processing-worker --timeout=180s
+            exit 1
+          fi
+
+          # API health check
+          HEALTHY=false
+
+          for i in $(seq 1 12); do
             if curl -fsS --max-time 5 http://127.0.0.1:30080/docs > /dev/null; then
+              HEALTHY=true
               echo "API health check passed"
-              exit 0
+              break
             fi
 
-            echo "Waiting for API to become healthy... (\$i/12)"
+            echo "Waiting for API... ($i/12)"
             sleep 5
           done
 
-          echo "API health check failed"
-          exit 1
+          # Roll back if health check fails
+          if [ "$HEALTHY" != "true" ]; then
+            echo "Health check failed. Rolling back..."
+            sudo kubectl rollout undo deployment/image-processing-api
+            sudo kubectl rollout undo deployment/image-processing-worker
+
+            sudo kubectl rollout status deployment/image-processing-api --timeout=180s
+            sudo kubectl rollout status deployment/image-processing-worker --timeout=180s
+            exit 1
+          fi
           EOF
           )
 
